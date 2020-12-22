@@ -5,14 +5,14 @@ import sqlite3
 
 conn = sqlite3.connect('card.s3db')
 cur = conn.cursor()
-# cur.execute('CREATE TABLE card (id INTEGER, number TEXT, pin TEXT, balance INTEGER DEFAULT 0);')
+cur.execute('CREATE TABLE card (id INTEGER, number TEXT, pin TEXT, balance INTEGER DEFAULT 0);')  # creates a database
 conn.commit()
 card_number = ''
 pin = ''
-id = 0
+user_id = 0
 balance = 0
 
-def greetings():
+def greetings():  # prints greetings and modes to choose
     print('1. Create an account')
     print('2. Log into account')
     print('0. Exit\n')
@@ -25,9 +25,10 @@ def greetings():
         print('Bye!')
         sys.exit()
 
-def luhn_alghoritm():
+def luhn_algorithm():  # creates a card number which complies to the Luhn algorithm
     bin_number = '400000'
     account_identifier = ''.join(str(random.randint(0, 9)) for element in range(1, 10))
+    print(account_identifier)
     elements_sum = 0
     card_number = bin_number + account_identifier
     for i, element in enumerate(card_number):
@@ -43,38 +44,38 @@ def luhn_alghoritm():
     else:
         last_number = '0'
     card_number += last_number
-    return(card_number)
+    return card_number
 
-def luhn_check(card_number):
+def luhn_check(card_number):  # checks if the card number from the input complies to the Luhn algorithm
     c = [int(x) for x in card_number[::-2]]
     u = [(2 * int(y)) // 10 + (2 * int(y)) % 10 for y in card_number[-2::-2]]
     return sum(c + u) % 10 == 0
 
-def create_account():
-    card_number = luhn_alghoritm()
+def create_account():  # creates credentials for the user: card number and pin
+    card_number = luhn_algorithm()
     random.seed(datetime.now())
     pin = ''.join([str(element) for element in random.sample(range(9), 4)])
-    id = str(random.randint(0, 9999))
+    user_id = str(random.randint(0, 9999))
     print('Your card has been created')
     print('Your card number:')
     print(card_number)
     print("Your card PIN:")
     print(pin)
     print('\n')
-    cur.execute(f'INSERT INTO card (id, number, pin, balance) VALUES ({int(id)}, {card_number}, {pin}, 0)')
+    cur.execute(f'INSERT INTO card (id, number, pin, balance) VALUES ({int(user_id)}, {card_number}, {pin}, 0)')
     conn.commit()
     greetings()
 
 def account_login():
     input_card_number = input('Enter your card number:')
     input_pin = input('Enter your PIN:')
-    if cur.execute(f'SELECT number FROM card WHERE number = {input_card_number};').fetchone() != None:
+    if cur.execute(f'SELECT number FROM card WHERE number = {input_card_number};').fetchone():
         database_card_number = cur.execute(f'SELECT number FROM card WHERE number={input_card_number};').fetchone()[0]
         database_pin = cur.execute(f'SELECT pin FROM card WHERE number={input_card_number};').fetchone()[0]
         if input_card_number == database_card_number and input_pin == database_pin:
             print("You have successfully logged in!")
             card_number = input_card_number
-            account_management(card_number)
+            account_management(card_number)  # goes to account management if card number and pin are valid
         else:
             print("Wrong card number or PIN!\n")
             greetings()
@@ -82,7 +83,7 @@ def account_login():
         print("Wrong card number or PIN!\n")
         greetings()
 
-def account_management(card_number):
+def account_management(card_number):  # account management
     print('1. Balance')
     print('2. Add income')
     print('3. Do transfer')
@@ -96,19 +97,19 @@ def account_management(card_number):
         old_income = int(cur.execute(f'SELECT balance FROM card WHERE number = {card_number};').fetchone()[0])
         income_to_add = int(input('Enter income:\n'))
         cur.execute(f'UPDATE card SET balance = {old_income + income_to_add} WHERE number = {card_number}')
-        conn.commit()
+        conn.commit()  # adds new income to the database
         print('Income was added!')
         account_management(card_number)
-    elif account_management_mode == '3':
+    elif account_management_mode == '3':  # money transfer
         print('Transfer\n')
         card_number_to_transfer = input('Enter card number:\n')
         if not luhn_check(card_number_to_transfer):
             print('Probably you made a mistake in the card number. Please try again!')
             account_management(card_number)
-        if card_number_to_transfer == card_number:
+        elif card_number_to_transfer == card_number:
             print("You can't transfer money to the same account!")
             account_management(card_number)
-        if not cur.execute(f'SELECT number FROM card WHERE number = {card_number_to_transfer};').fetchone():
+        elif not cur.execute(f'SELECT number FROM card WHERE number = {card_number_to_transfer};').fetchone():
             print('Such a card does not exist.')
             account_management(card_number)
         else:
@@ -125,15 +126,15 @@ def account_management(card_number):
                 conn.commit()
                 print('Success!')
                 greetings()
-    elif account_management_mode == '4':
+    elif account_management_mode == '4':  # closes the account, deletes the record from the database
         cur.execute(f'DELETE FROM card WHERE number = {card_number}')
         conn.commit()
         print('The account has been closed!\n')
         greetings()
-    elif account_management_mode == '5':
+    elif account_management_mode == '5':  # logs out, goes back to greetings
         print('You have successfully logged out!\n')
         greetings()
-    elif account_management_mode == '0':
+    elif account_management_mode == '0':  # ends the program
         print('Bye')
         conn.commit()
         sys.exit()
